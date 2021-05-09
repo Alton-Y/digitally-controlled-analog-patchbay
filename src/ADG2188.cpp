@@ -25,21 +25,16 @@ void ADG2188::set(bool state, uint8_t x, uint8_t y, bool ldsw)
     return;
   }
 
-  uint8_t wData;
+  uint8_t wData[2];
 
-  state ? wData = 0x01 : wData = 0x00; // ON/OFF state
+  state ? wData[0] = 0x01 : wData[0] = 0x00; // ON/OFF state
+  wData[0] = wData[0] << 7 | _xTable[x] << 3 | y;
 
-  wData = wData << 4 | _xTable[x];
-  wData = wData << 3 | y;
-
-  Serial.println(wData, HEX);
+  ldsw ? wData[1] = 0x01 : wData[1] = 0x00; // LDSW
 
   _wire->beginTransmission(_i2caddr);
-  _wire->write(wData);
-
-  ldsw ? wData = 0x01 : wData = 0x00; // LDSW
-  _wire->write(wData);
-
+  _wire->write(wData[0]);
+  _wire->write(wData[1]);
   _wire->endTransmission();
 }
 
