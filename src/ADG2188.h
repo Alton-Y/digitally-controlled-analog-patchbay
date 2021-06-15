@@ -15,6 +15,7 @@ public:
   void set(bool state, uint8_t x, uint8_t y, bool ldsw = true);
   // void reset();
   void updateState();
+  bool getState(uint8_t x, uint8_t y, bool update = true);
   void printState();
 
 

@@ -56,6 +56,23 @@ void ADG2188::updateState()
   }
 }
 
+bool ADG2188::getState(uint8_t x, uint8_t y, bool update)
+{
+  if (x > 7 || y > 7)
+  {
+    return false;
+  }
+
+  if (update)
+  {
+    updateState();
+  }
+
+  return (_state[x] >> y) & 1;
+}
+
+
+
 void ADG2188::printState()
 {
   updateState();
