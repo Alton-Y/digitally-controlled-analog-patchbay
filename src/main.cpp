@@ -6,10 +6,20 @@
 
 ADG2188 adg2188;
 AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+AsyncWebSocketClient* wsClient;
 
 bool state = true;
 int x = 0;
 int y = 0;
+
+void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
+  if(type == WS_EVT_CONNECT){
+    wsClient = client;
+  } else if(type == WS_EVT_DISCONNECT){
+    wsClient = nullptr;
+  }
+}
 
 void state_response(AsyncWebServerRequest *request)
 {
@@ -123,9 +133,21 @@ void setup()
   });
 
   // Start webserver
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
   server.begin();
 }
 
-void loop()
-{
+uint64_t counter = 0;
+void loop() {
+  // If client is connected ...
+  if(wsClient != nullptr && wsClient->canSend()) {
+    // .. send hello message :-)
+    wsClient->text("Hello client");
+    Serial.print("Hello client ");
+    Serial.println(counter);
+    counter++;
+  }
+
+  delay(50);
 }
