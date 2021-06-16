@@ -19,11 +19,25 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
   {
     wsClient = nullptr;
   }
+
+  switch (type)
+  {
+  case WS_EVT_CONNECT:
+    Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+    break;
+  case WS_EVT_DISCONNECT:
+    Serial.printf("WebSocket client #%u disconnected\n", client->id());
+    break;
+  case WS_EVT_DATA:
+  case WS_EVT_PONG:
+  case WS_EVT_ERROR:
+    break;
+  }
 }
 
 void state_response(AsyncWebServerRequest *request)
 {
-  adg2188.printState();
+  //adg2188.printState();
   AsyncResponseStream *response = request->beginResponseStream("application/json");
   DynamicJsonDocument json(2048);
 
@@ -78,30 +92,33 @@ void setup()
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "PUT,POST,GET,OPTIONS");
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "*");
 
-  server.onNotFound([](AsyncWebServerRequest *request) {
-    if (request->method() == HTTP_OPTIONS) {
-      request->send(200);
-    } else {
-      request->send(404);
-    }
-  });
+  server.onNotFound([](AsyncWebServerRequest *request)
+                    {
+                      if (request->method() == HTTP_OPTIONS)
+                      {
+                        request->send(200);
+                      }
+                      else
+                      {
+                        request->send(404);
+                      }
+                    });
 
   server.on("/api/wifi-info", HTTP_GET, [](AsyncWebServerRequest *request)
-  {
-    AsyncResponseStream *response = request->beginResponseStream("application/json");
-    DynamicJsonDocument json(2048);
-    json["status"] = "ok";
-    json["ssid"] = WiFi.SSID();
-    json["ip"] = WiFi.localIP().toString();
-    serializeJson(json, *response);
-    request->send(response);
-  });
+            {
+              AsyncResponseStream *response = request->beginResponseStream("application/json");
+              DynamicJsonDocument json(2048);
+              json["status"] = "ok";
+              json["ssid"] = WiFi.SSID();
+              json["ip"] = WiFi.localIP().toString();
+              serializeJson(json, *response);
+              request->send(response);
+            });
 
   server.on(
       "/api/patchbay-state",
       HTTP_POST,
-      [](AsyncWebServerRequest *request) 
-      {},
+      [](AsyncWebServerRequest *request) {},
       NULL,
       [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
       {
@@ -163,44 +180,43 @@ unsigned long deltaTime;
 
 void loop()
 {
-  // If client is connected ...
-  if (wsClient != nullptr && wsClient->canSend())
+
+  ws.cleanupClients();
+
+  char buffer[64];
+
+  currentTime = millis();
+  deltaTime = currentTime - prevTime;
+
+  v1 = v1 + deltaTime * r1;
+  v2 = v2 + deltaTime * r2;
+
+  if (v1 > 10)
   {
-    char buffer[64];
-
-    currentTime = millis();
-    deltaTime = currentTime - prevTime;
-
-    v1 = v1 + deltaTime * r1;
-    v2 = v2 + deltaTime * r2;
-
-    if (v1 > 10)
-    {
-      v1 = 10;
-      r1 = -r1;
-    }
-    else if (v1 < 0)
-    {
-      v1 = 0;
-      r1 = -r1;
-    }
-
-    if (v2 > 10)
-    {
-      v2 = 10;
-      r2 = -r2;
-    }
-    else if (v2 < 0)
-    {
-      v2 = 0;
-      r2 = -r2;
-    }
-
-    sprintf(buffer, "{\"timems\":%lu, \"status\":[%.3f, %.3f]}", currentTime, v1, v2);
-    wsClient->text(buffer);
-
-    prevTime = currentTime;
+    v1 = 10;
+    r1 = -r1;
+  }
+  else if (v1 < 0)
+  {
+    v1 = 0;
+    r1 = -r1;
   }
 
-  delay(100);
+  if (v2 > 10)
+  {
+    v2 = 10;
+    r2 = -r2;
+  }
+  else if (v2 < 0)
+  {
+    v2 = 0;
+    r2 = -r2;
+  }
+
+  sprintf(buffer, "{\"timems\":%lu, \"status\":[%.3f, %.3f]}", currentTime, v1, v2);
+  ws.textAll(buffer);
+
+  prevTime = currentTime;
+
+  delay(200);
 }
