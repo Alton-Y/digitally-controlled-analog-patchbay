@@ -11,7 +11,7 @@ void ADG2188::begin(uint8_t i2c_addr, TwoWire *theWire)
   _i2caddr = i2c_addr;
   _wire = &Wire;
   _wire->begin();
-  _wire->setClock(3400000);
+  // _wire->setClock(3400000);
 }
 
 void ADG2188::set(bool state, uint8_t x, uint8_t y, bool ldsw)
