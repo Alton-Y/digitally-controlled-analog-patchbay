@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <SPIFFS.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 #include <ADG2188.h>
@@ -67,6 +68,12 @@ void setup()
   // SETUP - ADG2188
   adg2188.begin();
 
+  // SETUP - SPIFFS
+  if (!SPIFFS.begin()) {
+    Serial.println("An Error has occurred while mounting SPIFFS");
+    return;
+  }
+
   // SETUP - WIFI
   WiFi.begin("ECMAScript-IOUT", "647rAy@6272836");
   uint32_t notConnectedCounter = 0;
@@ -86,11 +93,11 @@ void setup()
 
   // Initialize webserver URLs
 
-  // TODO: Only required to to allow cross-domain requests
-  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
-  DefaultHeaders::Instance().addHeader("Access-Control-Max-Age", "10000");
-  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "PUT,POST,GET,OPTIONS");
-  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "*");
+  // // TODO: Only required to to allow cross-domain requests
+  // DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
+  // DefaultHeaders::Instance().addHeader("Access-Control-Max-Age", "10000");
+  // DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "PUT,POST,GET,OPTIONS");
+  // DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "*");
 
   server.onNotFound([](AsyncWebServerRequest *request)
                     {
@@ -103,6 +110,10 @@ void setup()
                         request->send(404);
                       }
                     });
+
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/index.html", String(), false);
+  });
 
   server.on("/api/wifi-info", HTTP_GET, [](AsyncWebServerRequest *request)
             {
@@ -160,6 +171,10 @@ void setup()
 
   server.on("/api/patchbay-state", HTTP_GET, [](AsyncWebServerRequest *request)
             { state_response(request); });
+  
+  server.on("/static/media/error.webp", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/static/media/error.webp", "image/webp");
+  });
 
   // Start webserver
   ws.onEvent(onWsEvent);
